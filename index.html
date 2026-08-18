@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>夾公仔機營運管理系統</title>
+  
+  <!-- PWA 設定與手機 App 圖示 -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#4f46e5">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="公仔機管理">
+  <link rel="apple-touch-icon" href="FUNFUN.png">
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+HK:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <style>
+    body { font-family: 'Noto Sans HK', sans-serif; background-color: #f3f4f6; color: #333; padding-bottom: 40px; }
+    .hero-header { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: white; padding: 30px 0 50px 0; margin-bottom: -30px; border-radius: 0 0 24px 24px; }
+    .custom-card { border: none; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); background: #ffffff; }
+    .stat-card { border-radius: 12px; padding: 14px; background: #f8fafc; border: 1px solid #e2e8f0; }
+    .stat-label { font-size: 0.8rem; color: #64748b; font-weight: 500; }
+    .stat-value { font-size: 1.4rem; font-weight: 700; color: #0f172a; }
+    .accent-profit { background: #ecfdf5; border-color: #a7f3d0; }
+    .accent-profit .stat-value { color: #059669; }
+    .accent-month { background: #eff6ff; border-color: #bfdbfe; }
+    .accent-month .stat-value { color: #1d4ed8; }
+    .btn-gradient { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: white; border: none; border-radius: 10px; padding: 12px; font-weight: 600; }
+    .form-control { border-radius: 8px; padding: 10px 12px; }
+  </style>
+</head>
+<body>
+
+<div class="hero-header text-center">
+  <div class="container">
+    <h2 class="fw-bold mb-1"><i class="bi bi-controller me-2"></i>夾公仔機營運管理系統</h2>
+    <p class="opacity-75 mb-0">精準計算月度分紅階梯與單日收益</p>
+  </div>
+</div>
+
+<div class="container mt-4">
+  <div class="row g-4">
+    
+    <!-- 左側：輸入表單 -->
+    <div class="col-lg-5">
+      <div class="card custom-card mb-4">
+        <div class="card-body p-4">
+          <h5 class="card-title fw-bold mb-3 text-primary"><i class="bi bi-sliders me-2"></i>基礎設定</h5>
+          <div class="row g-3">
+            <div class="col-6">
+              <label class="form-label stat-label">每幣價值 ($)</label>
+              <input type="number" id="coinValue" class="form-control" value="5" oninput="calculate()">
+            </div>
+            <div class="col-6">
+              <label class="form-label stat-label">月結算起始日</label>
+              <input type="number" id="startDate" class="form-control" value="5" min="1" max="31" onchange="fetchLastCoinRead()">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card custom-card">
+        <div class="card-body p-4">
+          <h5 class="card-title fw-bold mb-3 text-primary"><i class="bi bi-pencil-square me-2"></i>每日數據輸入</h5>
+          
+          <div class="mb-3">
+            <label class="form-label stat-label">紀錄日期</label>
+            <input type="date" id="recordDate" class="form-control" onchange="fetchLastCoinRead()">
+          </div>
+
+          <div class="row g-2 mb-1">
+            <div class="col-6">
+              <label class="form-label stat-label">上次系統總讀數</label>
+              <input type="number" id="prevTotalCoins" class="form-control bg-light text-secondary" value="0" readonly>
+            </div>
+            <div class="col-6">
+              <label class="form-label stat-label text-primary fw-bold">機台【當前】總幣量</label>
+              <input type="number" id="currentTotalCoins" class="form-control border-primary" placeholder="輸入最新讀數" oninput="calculate()">
+            </div>
+          </div>
+          <div class="mb-3 text-end">
+            <small class="text-muted" style="font-size:0.75rem;"><i class="bi bi-cloud-check"></i> 讀數與本月/本日歷史紀錄已自雲端同步</small>
+          </div>
+
+          <div class="p-2 bg-light rounded mb-3 text-end" style="font-size:0.9rem;">
+            扣除上次讀數，本次新增：<strong class="text-primary fs-5" id="calcTodayCoins">0</strong> 枚
+          </div>
+
+          <hr class="my-4 text-muted">
+
+          <div class="row g-3 mb-3">
+            <div class="col-7">
+              <label class="form-label stat-label">出貨類型</label>
+              <input type="text" id="prizeType" class="form-control" placeholder="例: MELODY">
+            </div>
+            <div class="col-5">
+              <label class="form-label stat-label">出貨數量 (隻)</label>
+              <input type="number" id="prizeQty" class="form-control" value="0" oninput="calculate()">
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label stat-label">補貨成本 / 其他支出 ($)</label>
+            <input type="number" id="dailyExpenses" class="form-control" value="0" oninput="calculate()">
+          </div>
+          
+          <button class="btn btn-gradient w-100" id="submitBtn" onclick="submitData()">
+            <i class="bi bi-cloud-upload me-2"></i>提交紀錄至 Google Sheets
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右側：雙儀表板 -->
+    <div class="col-lg-7">
+      
+      <!-- 本日單日數據 -->
+      <div class="card custom-card mb-4">
+        <div class="card-body p-4">
+          <h5 class="card-title fw-bold mb-3 text-success"><i class="bi bi-calendar-check me-2"></i>本日總計 <small class="text-muted fw-normal" style="font-size: 0.9rem;">(包含今日稍早雲端紀錄)</small></h5>
+          <div class="row g-3 mb-3">
+            <div class="col-6">
+              <div class="stat-card accent-profit">
+                <div class="stat-label">本日台主總淨利</div>
+                <div class="stat-value">$<span id="todayNetProfit">0</span></div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="stat-card">
+                <div class="stat-label">本日總營業額</div>
+                <div class="stat-value">$<span id="todayRevenue">0</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="row g-3">
+            <div class="col-4">
+              <div class="stat-card"><div class="stat-label">場主分紅 (動態結算)</div><div class="stat-value text-danger">-$<span id="todayOwnerShare">0</span></div></div>
+            </div>
+            <div class="col-4">
+              <div class="stat-card"><div class="stat-label">出貨率</div><div class="stat-value"><span id="todayWinRate">-</span> <small class="fs-6">局/隻</small></div></div>
+            </div>
+            <div class="col-4">
+              <div class="stat-card"><div class="stat-label">爪力成本</div><div class="stat-value">$<span id="todayAvgCost">-</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 本月累計總數 -->
+      <div class="card custom-card">
+        <div class="card-body p-4">
+          <h5 class="card-title fw-bold mb-3 text-primary"><i class="bi bi-pie-chart me-2"></i>本月累計總覽 (預覽)</h5>
+          
+          <div class="row g-3 mb-3">
+            <div class="col-6">
+              <div class="stat-card accent-month">
+                <div class="stat-label">本月累計淨利 (台主總收益)</div>
+                <div class="stat-value">$<span id="mNetProfit">0</span></div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="stat-card">
+                <div class="stat-label">本月總營業額</div>
+                <div class="stat-value">$<span id="mRevenue">0</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-6">
+              <div class="stat-card">
+                <div class="stat-label">本月場主總分紅 (上限5千)</div>
+                <div class="stat-value text-danger">-$<span id="mOwnerShare">0</span></div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="stat-card">
+                <div class="stat-label">本月總補貨與支出</div>
+                <div class="stat-value text-danger">-$<span id="mExpenses">0</span></div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="stat-card">
+                <div class="stat-label">本月總投幣量</div>
+                <div class="stat-value"><span id="mCoins">0</span> 枚</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="stat-card">
+                <div class="stat-label">本月總出貨量 / 平均出貨率</div>
+                <div class="stat-value"><span id="mPrizeQty">0</span> 隻 (<span id="mWinRate">-</span>)</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // ⚠️ 請填入你的 Google Apps Script Web App URL
+  const API_URL = "https://script.google.com/macros/s/AKfycbwjlmdp2oIm5-73z9J_QIZJhT-d6ft3FshnWb6y-rbXk52xIy-aEoTF9KkVSMr1orqdiQ/exec";
+
+  document.getElementById('recordDate').valueAsDate = new Date();
+  
+  let monthCoinsSoFar = 0;
+  let baseMonthly = { revenue: 0, ownerShare: 0, expenses: 0, netProfit: 0, prizeQty: 0 };
+  let baseDaily = { coins: 0, revenue: 0, ownerShare: 0, expenses: 0, netProfit: 0, prizeQty: 0 };
+
+  async function fetchLastCoinRead() {
+    if (API_URL.includes("你的WEB_APP_ID")) return;
+
+    let prevCoinsInput = document.getElementById('prevTotalCoins');
+    prevCoinsInput.type = "text"; prevCoinsInput.value = "讀取中...";
+
+    let d = document.getElementById('recordDate').value;
+    let s = document.getElementById('startDate').value;
+    let url = API_URL + `?startDate=${s}&recordDate=${d}`;
+
+    try {
+      let response = await fetch(url);
+      let result = await response.json();
+      
+      if (result.status === "success") {
+        prevCoinsInput.type = "number";
+        prevCoinsInput.value = result.lastCoinRead;
+        
+        if (result.monthlySummary) {
+          monthCoinsSoFar = Number(result.monthlySummary.monthlyCoins) || 0;
+          baseMonthly.revenue = Number(result.monthlySummary.monthlyRevenue) || 0;
+          baseMonthly.ownerShare = Number(result.monthlySummary.monthlyOwnerShare) || 0;
+          baseMonthly.expenses = Number(result.monthlySummary.monthlyExpenses) || 0;
+          baseMonthly.netProfit = Number(result.monthlySummary.monthlyNetProfit) || 0;
+          baseMonthly.prizeQty = Number(result.monthlySummary.monthlyPrizeQty) || 0;
+        }
+
+        if (result.dailySummary) {
+          baseDaily.coins = Number(result.dailySummary.dailyCoins) || 0;
+          baseDaily.revenue = Number(result.dailySummary.dailyRevenue) || 0;
+          baseDaily.ownerShare = Number(result.dailySummary.dailyOwnerShare) || 0;
+          baseDaily.expenses = Number(result.dailySummary.dailyExpenses) || 0;
+          baseDaily.netProfit = Number(result.dailySummary.dailyNetProfit) || 0;
+          baseDaily.prizeQty = Number(result.dailySummary.dailyPrizeQty) || 0;
+        } else {
+          baseDaily = { coins: 0, revenue: 0, ownerShare: 0, expenses: 0, netProfit: 0, prizeQty: 0 };
+        }
+      }
+    } catch (error) {
+      console.error("同步失敗", error);
+      prevCoinsInput.type = "number"; prevCoinsInput.value = 0;
+    }
+    calculate();
+  }
+
+  function getFormData() {
+    let currentTotalCoins = parseInt(document.getElementById('currentTotalCoins').value) || 0;
+    let prevTotalCoins = parseInt(document.getElementById('prevTotalCoins').value) || 0;
+    let todayCoins = Math.max(0, currentTotalCoins - prevTotalCoins);
+    if (currentTotalCoins === 0) todayCoins = 0;
+
+    let coinValue = parseFloat(document.getElementById('coinValue').value) || 0;
+    let expenses = parseFloat(document.getElementById('dailyExpenses').value) || 0;
+    let prizeQty = parseInt(document.getElementById('prizeQty').value) || 0;
+    
+    let totalRevenue = todayCoins * coinValue;
+    let newMonthCoins = monthCoinsSoFar + todayCoins;
+    
+    function getShare(coins) {
+      let t1 = Math.min(coins, 1000);
+      let t2 = Math.max(0, Math.min(coins - 1000, 1000));
+      let share = (t1 * coinValue * 0.6) + (t2 * coinValue * 0.5);
+      return Math.min(share, 5000);
+    }
+
+    let oldMonthOwnerShare = getShare(monthCoinsSoFar);
+    let newMonthOwnerShare = getShare(newMonthCoins);
+    let deltaOwnerShare = newMonthOwnerShare - oldMonthOwnerShare;
+    if (deltaOwnerShare < 0) deltaOwnerShare = 0;
+
+    let netProfit = totalRevenue - deltaOwnerShare - expenses;
+    let winRate = prizeQty > 0 ? (todayCoins / prizeQty).toFixed(1) : "-";
+    let avgCost = prizeQty > 0 ? ((todayCoins / prizeQty) * coinValue).toFixed(1) : "-";
+
+    return {
+      date: document.getElementById('recordDate').value,
+      startDate: parseInt(document.getElementById('startDate').value) || 5,
+      currentTotalCoins: currentTotalCoins,
+      prevTotalCoins: prevTotalCoins,
+      todayCoins: todayCoins,
+      coinValue: coinValue,
+      prizeType: document.getElementById('prizeType').value,
+      prizeQty: prizeQty,
+      expenses: expenses,
+      totalRevenue: totalRevenue,
+      ownerShare: deltaOwnerShare,
+      netProfit: netProfit,
+      winRate: winRate,
+      avgCost: avgCost
+    };
+  }
+
+  function calculate() {
+    let payload = getFormData();
+    document.getElementById('calcTodayCoins').innerText = payload.todayCoins.toLocaleString();
+
+    let dCoins = baseDaily.coins + payload.todayCoins;
+    let dRevenue = baseDaily.revenue + payload.totalRevenue;
+    let dOwnerShare = baseDaily.ownerShare + payload.ownerShare;
+    let dNetProfit = baseDaily.netProfit + payload.netProfit;
+    let dPrizeQty = baseDaily.prizeQty + payload.prizeQty;
+    let dWinRate = dPrizeQty > 0 ? (dCoins / dPrizeQty).toFixed(1) : "-";
+    let dAvgCost = dPrizeQty > 0 ? ((dCoins / dPrizeQty) * payload.coinValue).toFixed(1) : "-";
+
+    document.getElementById('todayRevenue').innerText = dRevenue.toLocaleString();
+    document.getElementById('todayOwnerShare').innerText = dOwnerShare.toLocaleString();
+    document.getElementById('todayNetProfit').innerText = dNetProfit.toLocaleString();
+    document.getElementById('todayWinRate').innerText = dWinRate;
+    document.getElementById('todayAvgCost').innerText = dAvgCost;
+
+    let mCoins = monthCoinsSoFar + payload.todayCoins;
+    let mRevenue = baseMonthly.revenue + payload.totalRevenue;
+    let mOwnerShare = baseMonthly.ownerShare + payload.ownerShare;
+    let mExpenses = baseMonthly.expenses + payload.expenses;
+    let mNetProfit = baseMonthly.netProfit + payload.netProfit;
+    let mPrizeQty = baseMonthly.prizeQty + payload.prizeQty;
+    let mWinRate = mPrizeQty > 0 ? (mCoins / mPrizeQty).toFixed(1) : "-";
+
+    document.getElementById('mRevenue').innerText = mRevenue.toLocaleString();
+    document.getElementById('mCoins').innerText = mCoins.toLocaleString();
+    document.getElementById('mOwnerShare').innerText = mOwnerShare.toLocaleString();
+    document.getElementById('mExpenses').innerText = mExpenses.toLocaleString();
+    document.getElementById('mNetProfit').innerText = mNetProfit.toLocaleString();
+    document.getElementById('mPrizeQty').innerText = mPrizeQty.toLocaleString();
+    document.getElementById('mWinRate').innerText = mWinRate;
+  }
+
+  async function submitData() {
+    if (API_URL.includes("你的WEB_APP_ID")) {
+      alert("請先設定正確的 API_URL！"); return;
+    }
+
+    let currentCalcData = getFormData();
+    if (currentCalcData.currentTotalCoins <= currentCalcData.prevTotalCoins && currentCalcData.currentTotalCoins !== 0) {
+      if (!confirm("當前機台讀數小於或等於上次讀數，本次新增幣量將為 0。確定要提交嗎？")) return;
+    }
+
+    let btn = document.getElementById('submitBtn');
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>儲存至 Google Sheet...`;
+    btn.disabled = true;
+
+    try {
+      let response = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" }, 
+        body: JSON.stringify(currentCalcData)
+      });
+      
+      let result = await response.json();
+      if (result.status === "success") {
+        alert("✅ 資料已成功寫入！");
+        if(currentCalcData.currentTotalCoins > 0) {
+          document.getElementById('prevTotalCoins').value = currentCalcData.currentTotalCoins;
+          document.getElementById('currentTotalCoins').value = "";
+          document.getElementById('prizeQty').value = "0";
+          document.getElementById('prizeType').value = "";
+          document.getElementById('dailyExpenses').value = "0";
+          await fetchLastCoinRead(); 
+        }
+      } else {
+        alert("❌ 寫入失敗: " + result.message);
+      }
+    } catch (error) {
+      alert("❌ 網路連線錯誤，請確認 API_URL。");
+    } finally {
+      btn.innerHTML = `<i class="bi bi-cloud-upload me-2"></i>提交紀錄至 Google Sheets`;
+      btn.disabled = false;
+    }
+  }
+
+  window.onload = function() {
+    fetchLastCoinRead();
+    // 註冊 Service Worker 實現 PWA 功能
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js')
+        .then(() => console.log('App Service Worker 註冊成功！'))
+        .catch(err => console.log('SW 註冊失敗:', err));
+    }
+  };
+</script>
+
+</body>
+</html>
