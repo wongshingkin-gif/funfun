@@ -1,0 +1,21 @@
+{
+  "name": "夾公仔機營運管理系統",
+  "short_name": "公仔機管理",
+  "description": "單日營運結算與月度分紅統計系統",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#4f46e5",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/808/808485.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/808/808485.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
